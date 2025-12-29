@@ -1,4 +1,4 @@
-# --- Stage 1: Builder ---
+# --- Builder ---
     FROM python:3.13-slim AS builder
     
     WORKDIR /app
@@ -13,7 +13,7 @@
     COPY requirements.txt .
     RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
     
-    # --- Stage 2: Final ---
+    # --- Final ---
     FROM python:3.13-slim
     
     ENV PYTHONDONTWRITEBYTECODE=1
@@ -30,4 +30,4 @@
     EXPOSE 8000
     
     # Using "exec" form for CMD is generally preferred
-    CMD ["sh", "-c", "python db/wait_for_db.py && uvicorn main:app --host 0.0.0.0 --port 8000"]
+    CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000"]
