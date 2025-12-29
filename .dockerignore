@@ -11,6 +11,3 @@ venv/
 .git
 .gitignore
 .coverage
-lauch.sh
-revision.sh
-upgrade.sh
