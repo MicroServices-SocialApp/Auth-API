@@ -7,6 +7,7 @@
     <li>FastApi</li>
     <li>Pytest</li>
     <li>Pydentic</li>
+    <li>JWT</li>
 </ul>
 
 
