@@ -12,8 +12,8 @@ router = APIRouter(tags=["login"])
 
 # --- CONFIGURATION ---
 SECRET_KEY = os.getenv("SECRET_KEY")
-# ALGORITHM = os.getenv("ALGORITHM")
-ALGORITHM = "HS256"
+ALGORITHM = os.getenv("ALGORITHM")
+# ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
@@ -66,19 +66,33 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             
             # We use the service name 'user-api' which Docker resolves automatically
             response = await client.get(
-                "http://user-api:8000/user/read_user_by_username",
+                "http://user-api/user/read_user_by_username",    #"http://user-api:8000/user/read_user_by_username" when not using kubernetes
                 params={"username": form_data.username},
                 headers={"x-internal-token": SECRET_KEY}
             )
-        except httpx.RequestError as e:
-            raise HTTPException(status_code=503, detail=f"User Service unavailable. |---| {e} |---| {form_data.username}")
+            # This will jump straight to the 'except httpx.HTTPStatusError' block if status is not 2xx
+            response.raise_for_status()
 
-    if response.status_code != 200:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Incorrect username or password |---| {response.status_code}",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        except httpx.RequestError as e:
+            # Happens if the service is totally down or DNS fails
+            raise HTTPException(
+                status_code=503, 
+                detail=f"User Service unreachable: {e}"
+            )
+
+        except httpx.HTTPStatusError as e:
+            # Happens if service replied with 401, 404, 500, etc.
+            if e.response.status_code == 401:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Incorrect username or password: {e}",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            # Fallback for other status errors (like 404 or 500)
+            raise HTTPException(
+                status_code=e.response.status_code, 
+                detail=f"500 error: {e}"
+            )
 
     user_data = response.json()
 
